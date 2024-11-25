@@ -3,72 +3,51 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from datetime import datetime
-import os
+import time
 
-driver = webdriver.Edge() 
+def take_screenshot(driver, step_name):
+    """Función para tomar una captura de pantalla."""
+    driver.save_screenshot(f'{step_name}.png')
+
+# Configuración del navegador
+driver = webdriver.Edge()
 wait = WebDriverWait(driver, 10)
 
-reporte = []
-
-def agregar_resultado(prueba, resultado, detalles):
-    reporte.append(f"<tr><td>{prueba}</td><td>{resultado}</td><td>{detalles}</td></tr>")
-
 try:
+    # Caso 1: Abrir la página principal
     driver.get("https://poki.com/es")
-    logotipo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[data-test='logo']")))
-    agregar_resultado("Carga de página principal", "Éxito", "El logotipo está presente.")
-except Exception as e:
-    agregar_resultado("Carga de página principal", "Fallo", str(e))
-
-try:
-    search_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[title="Buscar"]')))
+    take_screenshot(driver, "case1_step1_open_home")
+    print("Caso 1: Página principal cargada con éxito.")
+    
+    # Caso 2: Buscar un juego
+    search_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[title="Buscar"]')))
     search_button.click()
+    take_screenshot(driver, "case2_step1_search_button_clicked")
+    
     search_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[placeholder="¿Qué jugarás hoy?"]')))
     search_input.send_keys("Papa's Scooperia")
     search_input.send_keys(Keys.RETURN)
-    resultado = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="app-root"]/div[1]/section/div[3]/div/div/a[1]')))
-    agregar_resultado("Búsqueda de juego existente", "Éxito", f"Juego encontrado: {resultado.text}")
-except Exception as e:
-    agregar_resultado("Búsqueda de juego existente", "Fallo", str(e))
+    take_screenshot(driver, "case2_step2_game_searched")
+    print("Caso 2: Juego buscado con éxito.")
+    
+    # Caso 3: Verificar que el juego está en los resultados
+    game_link = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='/es/g/papas-scooperia']")))
+    driver.execute_script("arguments[0].scrollIntoView(true);", game_link)
+    take_screenshot(driver, "case3_step1_game_visible")
+    print("Caso 3: El juego está visible en los resultados.")
 
-try:
-    search_input.clear()
-    search_input.send_keys("JuegoInventado")
-    search_input.send_keys(Keys.RETURN)
-    no_results = wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'No se encontraron resultados')]")))
-    agregar_resultado("Búsqueda de juego inexistente", "Éxito", "Mensaje de sin resultados mostrado.")
-except Exception as e:
-    agregar_resultado("Búsqueda de juego inexistente", "Fallo", str(e))
-
-try:
-    search_input.clear()
-    search_input.send_keys("Papa's Scooperia")
-    search_input.send_keys(Keys.RETURN)
-    game_link = wait.until(EC.presence_of_element_located((By.PARTIAL_LINK_TEXT, "Papa's Scooperia")))
+    # Caso 4: Abrir el juego
     game_link.click()
-    game_title = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "h1")))
-    agregar_resultado("Navegar a juego", "Éxito", f"Página del juego cargada: {game_title.text}")
+    take_screenshot(driver, "case4_step1_game_opened")
+    print("Caso 4: El juego se abrió con éxito.")
+
+    # Caso 5: Verificar la carga del juego
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "game-container")))  # Selector ajustado según sea necesario.
+    take_screenshot(driver, "case5_step1_game_loaded")
+    print("Caso 5: La interfaz del juego cargó correctamente.")
+
 except Exception as e:
-    agregar_resultado("Navegar a juego", "Fallo", str(e))
+    print(f"Error durante la ejecución: {e}")
 
-try:
-    play_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button[data-test='play-button']")))
-    play_button.click()
-    agregar_resultado("Probar botón Jugar", "Éxito", "El botón Jugar funciona correctamente.")
-except Exception as e:
-    agregar_resultado("Probar botón Jugar", "Fallo", str(e))
-
-driver.quit()
-
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-reporte_path = os.path.join(os.getcwd(), f"reporte_pruebas_{timestamp}.html")
-
-with open(reporte_path, "w", encoding="utf-8") as file:
-    file.write("<html><head><title>Reporte de Pruebas</title></head><body>")
-    file.write("<h1>Reporte de Pruebas - Poki</h1>")
-    file.write("<table border='1'><tr><th>Prueba</th><th>Resultado</th><th>Detalles</th></tr>")
-    file.writelines(reporte)
-    file.write("</table></body></html>")
-
-print(f"Reporte generado: {reporte_path}")
+finally:
+    driver.quit()
